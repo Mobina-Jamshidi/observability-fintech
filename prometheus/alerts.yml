@@ -1,0 +1,177 @@
+groups:
+- name: fintech-app
+  rules:
+  # ========== Error rate ==========
+  - alert: HighErrorRate
+    expr: |
+      sum(rate(transactions_total{status="failed"}[2m]))
+        /
+      clamp_min(sum(rate(transactions_total[2m])), 1e-9)
+      > 0.05
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: High error rate (>5% for 5m)
+      description: |
+        Failure ratio over the last 5 minutes is above 5%.
+        expr = sum(rate(failed))/sum(rate(all))
+
+  - alert: HighErrorRateCritical
+    expr: |
+      sum(rate(transactions_total{status="failed"}[2m]))
+        /
+      clamp_min(sum(rate(transactions_total[2m])), 1e-9)
+      > 0.15
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: High error rate (>15% for 2m)
+      description: Sudden spike in failed transactions.
+
+  # ========== Latency (p95) ==========
+  - alert: HighLatencyP95
+    expr: |
+      histogram_quantile(
+        0.95,
+        sum by (le) (rate(transaction_latency_seconds_bucket[5m]))
+      ) > 0.7
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: p95 latency > 700ms (5m)
+      description: 95th percentile latency has been above 0.7s for 5 minutes.
+
+  - alert: HighLatencyP95Critical
+    expr: |
+      histogram_quantile(
+        0.95,
+        sum by (le) (rate(transaction_latency_seconds_bucket[5m]))
+      ) > 1.2
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: p95 latency > 1.2s (2m)
+      description: Critical tail-latency degradation.
+
+  # ========== Latency (average) ==========
+  - alert: HighLatencyAvg
+    expr: |
+      ( rate(transaction_latency_seconds_sum[5m])
+        /
+        clamp_min(rate(transaction_latency_seconds_count[5m]), 1e-9)
+      ) > 0.7
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Average latency > 700ms (5m)
+      description: Mean latency above 0.7s over 5 minutes.
+
+  - alert: HighLatencyAvgCritical
+    expr: |
+      ( rate(transaction_latency_seconds_sum[5m])
+        /
+        clamp_min(rate(transaction_latency_seconds_count[5m]), 1e-9)
+      ) > 1.0
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: Average latency > 1.0s (2m)
+      description: Critical increase in mean latency.
+
+  # ========== Gateway errors ==========
+  - alert: HighGatewayErrorRate
+    expr: |
+      sum(rate(gateway_requests_total{outcome="error"}[5m]))
+        /
+      clamp_min(sum(rate(gateway_requests_total[5m])), 1e-9)
+      > 0.05
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: High gateway error rate (>5% for 5m)
+      description: Upstream payment gateway failures are elevated.
+
+  - alert: HighGatewayErrorRateCritical
+    expr: |
+      sum(rate(gateway_requests_total{outcome="error"}[5m]))
+        /
+      clamp_min(sum(rate(gateway_requests_total[5m])), 1e-9)
+      > 0.10
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: High gateway error rate (>10% for 2m)
+      description: Severe upstream errors impacting payments.
+
+  # ========== Fraud share ==========
+  - alert: HighFraudRate
+    expr: |
+      (
+        sum(rate(fraud_score_bucket{le="1.0"}[5m]))
+        - sum(rate(fraud_score_bucket{le="0.9"}[5m]))
+      )
+        /
+      clamp_min(sum(rate(fraud_score_count[5m])), 1e-9)
+      > 0.02
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: High share of high-risk transactions (>2% for 5m)
+      description: Potential fraud spike (scores in (0.9, 1.0]).
+
+  - alert: HighFraudRateCritical
+    expr: |
+      (
+        sum(rate(fraud_score_bucket{le="1.0"}[5m]))
+        - sum(rate(fraud_score_bucket{le="0.9"}[5m]))
+      )
+        /
+      clamp_min(sum(rate(fraud_score_count[5m])), 1e-9)
+      > 0.05
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: High-risk transactions >5% (5m)
+      description: Strong indication of fraud surge.
+
+  # ========== Revenue health ==========
+  - alert: RevenueDrop
+    expr: |
+      sum(rate(transaction_amount_sum[5m]))
+        < 0.5 * clamp_min(sum(rate(transaction_amount_sum[30m])), 1e-9)
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: Revenue/s dropped >50% vs 30m baseline
+      description: Investigate traffic sources, dependencies, or failures upstream.
+
+  # ========== Backpressure ==========
+  - alert: Backpressure
+    expr: transactions_in_progress > 10
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: In-flight transactions are high
+      description: Sustained backpressure indicates saturation or slow dependencies.
+
+  - alert: BackpressureCritical
+    expr: transactions_in_progress > 20
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: Severe backpressure (in-flight > 20)
+      description: Likely saturation; scale out or shed load.
+

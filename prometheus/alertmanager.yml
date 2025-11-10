@@ -1,0 +1,24 @@
+route:
+  receiver: fanout
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 1h
+
+receivers:
+  - name: fanout
+    webhook_configs:
+      - url: http://fintech_flask:5000/alert
+        send_resolved: true
+    telegram_configs:
+      - bot_token: "$bot-token"
+        chat_id: "$chat-id"
+        parse_mode: HTML
+        message: |-
+          🔔 <b>{{ .Status | toUpper }}</b> — <b>{{ .CommonLabels.alertname }}</b>
+          {{- range .Alerts }}
+          • <b>{{ .Labels.severity }}</b> on <code>{{ .Labels.instance }}</code>
+            {{ .Annotations.summary }} — {{ .Annotations.description }}
+          {{- end }}
+        send_resolved: true
+
