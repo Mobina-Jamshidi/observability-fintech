@@ -28,8 +28,6 @@ Focus: **finance-relevant KPIs/SLIs** (TPS, Success/Error rate, Avg/p95 latency,
 
 ## 🧭 Architecture
 
-```bash
-
 Client  →  Flask+Gunicorn (/transaction, /metrics, /alert)
 │            │             │
 │            │             └─ logs {"event":"alert_received"} → Loki
@@ -42,7 +40,7 @@ Node Exporter & cAdvisor → Prometheus
 Prometheus (rules) ──FIRING──> Alertmanager ──┬── Telegram (human)
 └── Webhook /alert (audit trail)
 Grafana ← Prometheus + Loki (Dashboards & Logs)
-```
+
 ---
 
 ## 📁 Repository Layout
