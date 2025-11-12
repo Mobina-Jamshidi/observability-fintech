@@ -28,7 +28,7 @@ Focus: **finance-relevant KPIs/SLIs** (TPS, Success/Error rate, Avg/p95 latency,
 
 ## 🧭 Architecture
 
-```
+```mardown
 
 Client  →  Flask+Gunicorn (/transaction, /metrics, /alert)
 │            │             │
@@ -43,17 +43,11 @@ Prometheus (rules) ──FIRING──> Alertmanager ──┬── Telegram (hu
 └── Webhook /alert (audit trail)
 Grafana ← Prometheus + Loki (Dashboards & Logs)
 
-```
-
-> Add your diagram to `docs/architecture.png`:
->
-> `![Architecture](docs/architecture.png)`
-
 ---
 
 ## 📁 Repository Layout
 
-```
+```bash
 
 observability-fintech
 ├── app/
