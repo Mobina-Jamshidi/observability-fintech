@@ -28,7 +28,7 @@ Focus: **finance-relevant KPIs/SLIs** (TPS, Success/Error rate, Avg/p95 latency,
 
 ## 🧭 Architecture
 
-```mardown
+```bash
 
 Client  →  Flask+Gunicorn (/transaction, /metrics, /alert)
 │            │             │
@@ -234,22 +234,6 @@ transactions_in_progress
 * **Backpressure** / **BackpressureCritical**
 
 Design principles: `for:` windows (2–10m), severity separation (warning/critical), Alertmanager grouping to reduce noise.
-
----
-
-## 🖼️ Screenshots (placeholders)
-
-Place images in `docs/` and link here:
-
-* `![Tree](docs/tree.png)` — Project tree
-* `![Containers](docs/docker-ps.png)` — `docker ps`
-* `![Targets](docs/prom-targets.png)` — Prometheus Targets
-* `![Alerts](docs/prom-alerts.png)` — Prometheus Alerts
-* `![Dashboard](docs/grafana-fintech.png)` — Grafana Fintech Dashboard
-* `![Logs](docs/grafana-logs.png)` — Grafana Logs panel (`alert_received`)
-* `![Alertmanager](docs/alertmanager.png)` — Alertmanager UI
-* `![Telegram](docs/telegram.png)` — Telegram sample (redacted)
-* `![LoadSummary](docs/load-summary.png)` — load_summary.json snippet
 
 ---
 
