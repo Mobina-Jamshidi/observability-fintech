@@ -42,7 +42,7 @@ Node Exporter & cAdvisor → Prometheus
 Prometheus (rules) ──FIRING──> Alertmanager ──┬── Telegram (human)
 └── Webhook /alert (audit trail)
 Grafana ← Prometheus + Loki (Dashboards & Logs)
-
+```
 ---
 
 ## 📁 Repository Layout
