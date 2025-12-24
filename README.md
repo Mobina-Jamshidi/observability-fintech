@@ -1,6 +1,5 @@
 ```markdown
-# 💹 Observability Fintech  
-### Production-style Observability with Flask, Prometheus, Grafana & Loki
+# Observability Fintech (DevOps + Prometheus/Grafana/Loki)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#-license)
 [![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED.svg)]()
@@ -9,265 +8,294 @@
 [![Grafana](https://img.shields.io/badge/Grafana-9.x-F46800?logo=grafana)]()
 [![Loki](https://img.shields.io/badge/Loki-2.9-0E9A14.svg)]()
 
-A **production-grade observability demo** for a **financial transaction service**, showcasing how **DevOps/SRE teams monitor, alert, and audit business-critical flows**.
+A complete **observability demo** for a **financial transactions service** (Flask + Gunicorn) using **Prometheus/Alertmanager**, **Grafana**, **Loki/Promtail**, **Node Exporter**, and **cAdvisor**, orchestrated with **Docker Compose**.
 
-This project simulates a fintech payments backend (Flask + Gunicorn) and instruments it end-to-end using **Prometheus, Alertmanager, Grafana, and Loki**, fully orchestrated with **Docker Compose**.
-
-> 🎯 **Focus:** finance-relevant KPIs (TPS, error rate, p95 latency, revenue/min) and **low-noise alerting** with human + system fan-out.
-
----
-
-## ✨ Why This Project Exists
-
-This repository is intentionally **not a hello-world observability stack**.
-
-It demonstrates how to:
-
-- Translate **technical metrics into business KPIs**
-- Design **low-noise, severity-aware alerts**
-- Maintain an **auditable alert trail** using logs
-- Validate dashboards and alerts with **synthetic traffic**
-- Run a **full observability stack locally** using Docker
-
-Ideal for:
-- DevOps / SRE portfolios  
-- Fintech observability demos  
-- Interview take-home projects  
-- Internal proof-of-concepts  
+Focus: **finance-relevant KPIs/SLIs** (TPS, Success/Error rate, Avg/p95 latency, Revenue/min, Gateway errors, Backpressure) and **low-noise alerting** (Telegram + webhook → audit trail in logs).
 
 ---
 
 ## ✨ Features
 
-- **Application metrics** via Prometheus client (Counters, Gauges, Histograms)
-- **Finance dashboard** in Grafana (TPS, Error %, Avg & p95 latency, Revenue/min)
-- **Alerting** with warning/critical severity
-- **Alert fan-out** to Telegram (human) + webhook (system audit)
-- **Centralized logs** with Promtail → Loki
-- **Infrastructure metrics** via Node Exporter & cAdvisor
-- **Synthetic traffic generators** (continuous + controlled load)
-- **Persistent volumes** for Prometheus, Grafana, and Loki
+- **App metrics** via Prometheus client (Counter/Gauge/Histogram)
+- **Finance dashboard** in Grafana (TPS, status breakdown, Error%, Avg/p95 latency, Revenue/min, In-flight)
+- **Alerting** (warning/critical) with **fan-out** to Telegram (human) + Flask webhook (system log trail)
+- **Centralized logs** with Promtail → Loki (ready-to-use LogQL filters)
+- **Infra visibility** via Node Exporter & cAdvisor
+- **Traffic generator** (`loadgen.sh`) and controlled load test (`load_test.py`)
+- **Persistent volumes** for Prometheus/Grafana/Loki data
 
 ---
 
-## 🧭 Architecture Overview
+## 🧭 Architecture
 
-```
-
-Client ──▶ Flask + Gunicorn
-├─ /transaction  → business logic & metrics
-├─ /metrics      → Prometheus scrape
-├─ /alert        → Alertmanager webhook (audit log)
-└─ JSON logs
+Client  →  Flask+Gunicorn (/transaction, /metrics, /alert)
+│            │             │
+│            │             └─ logs {"event":"alert_received"} → Loki
+│            └─ Prometheus scrapes /metrics
 │
-▼
-Promtail ──▶ Loki ──▶ Grafana (Logs)
+loadgen  →  synthetic traffic
 
-Prometheus
-├─ scrapes app & infra
-├─ evaluates alert rules
-└─ sends alerts ──▶ Alertmanager
-├─ Telegram notifications
-└─ Webhook → Flask (/alert)
+Node Exporter & cAdvisor → Prometheus
 
-Node Exporter + cAdvisor ──▶ Prometheus ──▶ Grafana (Infra)
-
-````
-
+Prometheus (rules) ──FIRING──> Alertmanager ──┬── Telegram (human)
+└── Webhook /alert (audit trail)
+Grafana ← Prometheus + Loki (Dashboards & Logs)
+```
 ---
 
-## 📁 Repository Structure
+## 📁 Repository Layout
 
 ```bash
+
 observability-fintech
-├── app/                     # Flask fintech service
+├── app/
 │   ├── app.py
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── docker-compose.yml
+├── grafana/
+│   └── provisioning/
+│       ├── dashboards/
+│       │   ├── dashboards.yml
+│       │   ├── fintech-dashboard.json
+│       │   ├── node-exporter-1860.json
+│       │   └── docker-cadvisor-13496.json
+│       └── datasources/
+│           ├── datasource.yml
+│           └── loki.yml
+├── loki/config.yml
 ├── prometheus/
 │   ├── prometheus.yml
 │   ├── alerts.yml
 │   └── alertmanager.yml
-├── grafana/
-│   └── provisioning/
-│       ├── dashboards/
-│       └── datasources/
-├── loki/config.yml
 ├── promtail/config.yml
-├── scripts/
-│   ├── loadgen.sh
-│   └── load_test.py
-└── docs/                    # Screenshots & diagrams (optional)
+└── scripts/
+├── loadgen.sh
+└── load_test.py
+
 ````
 
 ---
 
 ## ⚙️ Prerequisites
 
-* Docker + Docker Compose
-* Open ports: `3000, 3100, 5000, 8080, 9090, 9093, 9100`
-* (Optional) Telegram bot token & chat ID
+- Docker + Docker Compose
+- Open ports: `3000, 3100, 5000, 8080, 9090, 9093, 9100`
+- (Optional) **Telegram** bot token and chat ID for alert notifications
 
 ---
 
 ## 🚀 Quick Start
 
 ```bash
-git clone https://gitlab.com/<you>/observability-fintech.git
+# 1) Clone
+git clone https://github.com/<you>/observability-fintech.git
 cd observability-fintech
 
-# Optional: Telegram secrets (recommended via env or .env)
-export AM_TELEGRAM_BOT_TOKEN="xxxx"
-export AM_TELEGRAM_CHAT_ID="123456"
+# 2) (Optional) set Telegram secrets via environment or .env (recommended)
+# export AM_TELEGRAM_BOT_TOKEN="xxxx"
+# export AM_TELEGRAM_CHAT_ID="123456"
 
+# 3) Up & build
 docker compose up -d --build
-```
 
-### Health Checks
-
-```bash
+# 4) Health checks
 curl -sf localhost:5000/health && echo "APP OK"
 curl -sf localhost:9090/-/ready && echo "PROM OK"
 curl -sf localhost:3000/login  && echo "GRAFANA OK"
-```
+````
+
+**URLs**
+
+* App: [http://localhost:5000](http://localhost:5000)
+* Prometheus: [http://localhost:9090](http://localhost:9090)
+* Alertmanager: [http://localhost:9093](http://localhost:9093)
+* Grafana: [http://localhost:3000](http://localhost:3000) (default `admin/admin`, change it)
+* Loki endpoint: [http://localhost:3100](http://localhost:3100) (used via Grafana datasource)
+
+> The Telegram route is configured in `prometheus/alertmanager.yml`. **Do not commit** real secrets—use envs or redact.
 
 ---
 
-## 🌐 Service URLs
+## 🔧 Configuration Notes
 
-| Service      | URL                                            |
-| ------------ | ---------------------------------------------- |
-| Application  | [http://localhost:5000](http://localhost:5000) |
-| Prometheus   | [http://localhost:9090](http://localhost:9090) |
-| Alertmanager | [http://localhost:9093](http://localhost:9093) |
-| Grafana      | [http://localhost:3000](http://localhost:3000) |
-| Loki         | [http://localhost:3100](http://localhost:3100) |
+### App (Flask)
 
-> 🔐 Grafana default credentials: `admin / admin` — **change immediately**
+* **Endpoints**
 
----
+  * `POST /transaction` — simulates payments: randomized latency, gateway errors (~5%), fraud scoring, success (~90%)
+  * `GET /metrics` — Prometheus exposition
+  * `POST /alert` — Alertmanager webhook → writes JSON log `{"event":"alert_received"}` (auditable in Loki)
+  * `GET /health`
+* **Metrics**
 
-## 📊 Metrics & Business KPIs
+  * `transactions_total{status}` (Counter)
+  * `transaction_latency_seconds` (Histogram → p95 via `histogram_quantile`)
+  * `transaction_amount{status}` (Histogram → Revenue/min, avg ticket)
+  * `transactions_in_progress` (Gauge)
+  * `gateway_requests_total{outcome}`, `gateway_latency_seconds`
+  * `fraud_score` (Histogram)
 
-### Application Metrics
+### Prometheus
 
-* `transactions_total{status}`
-* `transaction_latency_seconds` (Histogram → p95)
-* `transaction_amount_sum` (Revenue/min)
-* `transactions_in_progress`
-* `gateway_requests_total{outcome}`
-* `fraud_score`
+* `prometheus.yml`: scrape every `5s`, Flask `scrape_timeout: 4s`, rules enabled via `rule_files`
+* `alerts.yml`: low-noise rules with `for:` windows, `warning`/`critical`, `clamp_min()` to avoid div-by-zero
 
-### Example PromQL Queries
+### Alertmanager
 
-```promql
-# Transactions per second
-sum(rate(transactions_total[1m]))
+* `alertmanager.yml`: `group_by`, `group_wait`, `group_interval`, `repeat_interval`
+* **Fan-out**:
 
-# Error rate (5m)
-sum(rate(transactions_total{status="failed"}[5m])) /
-clamp_min(sum(rate(transactions_total[5m])), 1e-9)
+  * `telegram_configs` (human notification)
+  * `webhook_configs` to `http://fintech_flask:5000/alert` (system audit trail)
 
-# Average latency
-rate(transaction_latency_seconds_sum[5m]) /
-clamp_min(rate(transaction_latency_seconds_count[5m]), 1e-9)
+> **Secrets:** Never hard-code `bot_token`/`chat_id` in the repo. Use env/secrets. In public repos, redact tokens.
 
-# p95 latency
-histogram_quantile(
-  0.95,
-  sum by (le) (rate(transaction_latency_seconds_bucket[5m]))
-)
+### Grafana
 
-# Revenue per minute
-sum(rate(transaction_amount_sum[5m])) * 60
-```
+* Provisioned datasources (Prometheus, Loki) and dashboards:
 
----
+  * `fintech-dashboard.json` (TPS, status breakdown, Error rate, Avg/p95 latency, Revenue/min, In-flight)
+  * Node Exporter & cAdvisor community dashboards included
 
-## 🔔 Alerting Strategy
+### Loki/Promtail (Logs)
 
-Alerts are designed to reflect **business impact**, not metric noise.
-
-* Warning / Critical severity levels
-* Time-based confirmation using `for:` windows
-* Alertmanager grouping and deduplication
-* Fan-out destinations:
-
-  * **Telegram** (human response)
-  * **Webhook → Flask** (audit log in Loki)
-
-### Alert Audit Log (LogQL)
+* `promtail/config.yml` discovers Docker containers via `docker.sock`
+* Labels: `container`, `service`, `stream` + parsed JSON `event`/`status`
+* LogQL example (audit trail):
 
 ```logql
 {container="fintech_flask"} |= "alert_received"
 ```
 
+### Traffic generators
+
+* `scripts/loadgen.sh` — continuous traffic + synthetic alert every N seconds (env-configurable)
+* `scripts/load_test.py` — controlled RPS for N seconds; outputs:
+
+  * `load_output/load_summary.json`
+  * `load_output/load_samples.csv`
+
 ---
 
-## 🧪 Traffic & Testing
+## 📊 Key Queries (PromQL/LogQL)
 
-### Continuous Load (containerized)
+**PromQL**
+
+```promql
+# TPS
+sum(rate(transactions_total[1m]))
+
+# Success/Total (5m)
+sum(rate(transactions_total{status="success"}[5m])) /
+clamp_min(sum(rate(transactions_total[5m])), 1e-9)
+
+# Error/Total (5m)
+sum(rate(transactions_total{status="failed"}[5m])) /
+clamp_min(sum(rate(transactions_total[5m])), 1e-9)
+
+# Avg latency (5m)
+rate(transaction_latency_seconds_sum[5m]) /
+clamp_min(rate(transaction_latency_seconds_count[5m]), 1e-9)
+
+# p95 latency (5m)
+histogram_quantile(0.95, sum by (le)(rate(transaction_latency_seconds_bucket[5m])))
+
+# Revenue/min (5m)
+sum(rate(transaction_amount_sum[5m])) * 60
+
+# Gateway error share (5m)
+sum(rate(gateway_requests_total{outcome="error"}[5m])) /
+clamp_min(sum(rate(gateway_requests_total[5m])), 1e-9)
+
+# Backpressure (instant)
+transactions_in_progress
+```
+
+**LogQL**
+
+```logql
+# Alert audit trail
+{container="fintech_flask"} |= "alert_received"
+```
+
+---
+
+## 🔔 Alerts (samples)
+
+* **HighErrorRate** / **HighErrorRateCritical**
+* **HighLatencyP95** / **HighLatencyP95Critical**
+* **HighLatencyAvg** / **HighLatencyAvgCritical**
+* **HighGatewayErrorRate** / **...Critical**
+* **HighFraudRate** / **...Critical**
+* **RevenueDrop**
+* **Backpressure** / **BackpressureCritical**
+
+Design principles: `for:` windows (2–10m), severity separation (warning/critical), Alertmanager grouping to reduce noise.
+
+---
+
+## 🛡️ Security & Ops Notes
+
+* **No PII in logs**; only operational events (e.g., `alert_received`)
+* **Secrets** (Telegram) via env/secret files; **never** commit real tokens
+* Grafana: change default password, enable RBAC; restrict management ports or use TLS reverse proxy
+* Persistent volumes: `prometheus-data`, `grafana-data`, `loki-data`
+* Consider retention/backup policies for long-running setups
+
+---
+
+## 🧪 Testing
+
+**Continuous load (containerized)**
 
 ```bash
 docker logs -f loadgen
 ```
 
-### Controlled Load Test
+**Controlled local test**
 
 ```bash
-python3 scripts/load_test.py \
-  --base-url http://localhost:5000 \
-  --rps 12 \
-  --duration 180 \
-  --workers 30
+python3 scripts/load_test.py --base-url http://localhost:5000 --rps 12 --duration 180 --workers 30
+cat load_output/load_summary.json
 ```
-
-Outputs:
-
-* `load_output/load_summary.json`
-* `load_output/load_samples.csv`
 
 ---
 
-## 🛡️ Security & Operations Notes
+## ❓ Troubleshooting
 
-* No PII or sensitive payment data in logs
-* Secrets managed via environment variables or Docker secrets
-* Persistent volumes for metrics and logs
-* Alert webhook logs provide an **audit trail** for incidents
+* **Prometheus exits**: check `docker logs prometheus`
+
+  * Ensure `scrape_timeout < scrape_interval`
+* **Alertmanager YAML error**: type correctness (e.g., numeric `chat_id`)
+* **No logs in Grafana**: verify Loki datasource, Promtail discovery; try:
+
+  ```logql
+  {container="fintech_flask"}
+  ```
+* **Alert noise**: increase `for:` windows or adjust `group_wait/group_interval/repeat_interval`
 
 ---
 
 ## 🗺️ Roadmap
 
-* OpenTelemetry tracing (Jaeger / Tempo)
-* Synthetic probes via Blackbox Exporter
-* Kubernetes deployment (Mimir / Thanos, distributed Loki)
-* CI observability smoke tests
-* SLA / SLO and error budget tracking
+* Secrets via `.env` / Docker secrets
+* Synthetic probes (blackbox_exporter)
+* Tracing (Jaeger/OTel) for multi-service scenarios
+* K8s + Thanos/Mimir + distributed Loki for HA/scale
+* CI/CD lint for YAML + post-deploy observability smoke tests
 
 ---
 
-## 🤝 Contributing
+## 📦 Extras to include in the repo
 
-Contributions, issues, and suggestions are welcome.
-For major changes, please open an issue to discuss first.
+* `docs/` folder with screenshots:
 
----
+  * `architecture.png`, `tree.png`, `docker-ps.png`, `prom-targets.png`, `prom-alerts.png`, `grafana-fintech.png`, `grafana-logs.png`, `alertmanager.png`, `telegram.png`, `load-summary.png`
+* A `LICENSE` file (MIT recommended)
+* Optional `.env.example`:
 
-## 📄 License
-
-This project is licensed under the **MIT License**. See `LICENSE` for details.
-
-```
-
----
-
-If you want, I can also:
-- Add **screenshots placeholders** for GitLab rendering  
-- Optimize this for **GitLab CI + README badges**  
-- Write a **short “Demo Walkthrough” section** for interviews  
-
-Just tell me 👍
-```
+  ```env
+  # Alertmanager → Telegram
+  AM_TELEGRAM_BOT_TOKEN=REDACTED
+  AM_TELEGRAM_CHAT_ID=123456789
